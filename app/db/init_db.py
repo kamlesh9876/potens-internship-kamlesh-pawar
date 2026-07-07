@@ -3,4 +3,7 @@ from app.models.item import Item
 
 
 def init_db() -> None:
-    Base.metadata.create_all(bind=engine)
+    """Initialize database - migrations should be used instead"""
+    # This function is deprecated. Use Alembic migrations instead.
+    # Base.metadata.create_all(bind=engine)
+    pass

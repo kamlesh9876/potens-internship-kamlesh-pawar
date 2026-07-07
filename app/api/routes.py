@@ -12,7 +12,7 @@ from app.schemas.recommendation import ProfileInput, RecommendationResponse
 from app.repositories.item_repository import ItemRepository
 from app.services.recommendation_service import RecommendationService
 from app.services.explain_service import ExplainService
-from app.models.item import Item
+from app.services.item_service import ItemService
 from app.schemas.response import ApiResponse
 
 router = APIRouter()
@@ -24,18 +24,21 @@ def get_admin_token(x_admin_token: Optional[str] = Header(None)) -> str:
     return x_admin_token
 
 
-@router.get("/health")
+@router.get("/health", tags=["Health"])
 def healthcheck():
+    """Health check endpoint"""
     return ApiResponse(success=True, message="Service is healthy", data={"name": APP_NAME, "status": "Running"}).model_dump()
 
 
-@router.get("/health/application")
+@router.get("/health/application", tags=["Health"])
 def health_application():
+    """Application health check endpoint"""
     return ApiResponse(success=True, message="Application is running", data={"name": APP_NAME}).model_dump()
 
 
-@router.get("/health/db")
+@router.get("/health/db", tags=["Health"])
 def health_database(db: Session = Depends(get_db)):
+    """Database health check endpoint"""
     try:
         db.execute(text("SELECT 1"))
         return ApiResponse(success=True, message="Database reachable", data={"status": "ok"}).model_dump()
@@ -44,28 +47,31 @@ def health_database(db: Session = Depends(get_db)):
         raise AppError("Database unavailable", status_code=503) from exc
 
 
-@router.post("/recommend", response_model=RecommendationResponse)
+@router.post("/recommend", response_model=RecommendationResponse, tags=["Recommendations"])
 def recommend(profile: ProfileInput, db: Session = Depends(get_db)):
-    repository = ItemRepository(db)
-    service = RecommendationService()
-    items = repository.list_items()
-    recommendations = service.build_recommendations(profile, items)
+    """Get personalized recommendations based on user profile"""
+    item_repository = ItemRepository(db)
+    recommendation_service = RecommendationService(item_repository)
+    recommendations = recommendation_service.build_recommendations(profile)
     return RecommendationResponse(recommendations=recommendations)
 
 
-@router.get("/items", response_model=PaginatedResponse[ItemRead])
+@router.get("/items", response_model=PaginatedResponse[ItemRead], tags=["Items"])
 def list_items(
-    page: int = Query(1, ge=1),
-    limit: int = Query(20, ge=1, le=100),
-    name: Optional[str] = None,
-    category: Optional[str] = None,
-    goal: Optional[str] = None,
-    location: Optional[str] = None,
-    skill_level: Optional[str] = None,
+    page: int = Query(1, ge=1, description="Page number"),
+    limit: int = Query(20, ge=1, le=100, description="Items per page"),
+    name: Optional[str] = Query(None, description="Filter by name"),
+    category: Optional[str] = Query(None, description="Filter by category"),
+    goal: Optional[str] = Query(None, description="Filter by goal"),
+    location: Optional[str] = Query(None, description="Filter by location"),
+    skill_level: Optional[str] = Query(None, description="Filter by skill level"),
     db: Session = Depends(get_db),
     token: str = Depends(get_admin_token),
 ):
-    repository = ItemRepository(db)
+    """List items with pagination and filtering"""
+    item_repository = ItemRepository(db)
+    item_service = ItemService(item_repository)
+    
     filters = {
         "name": name,
         "category": category,
@@ -73,65 +79,59 @@ def list_items(
         "location": location,
         "skill_level": skill_level,
     }
-    items = repository.list_items(filters=filters)
-    total = len(items)
-    sliced_items = items[(page - 1) * limit: page * limit]
+    
+    paginated_data = item_service.get_paginated_items(page, limit, filters)
     return PaginatedResponse(
-        page=page,
-        limit=limit,
-        total=total,
-        items=[ItemRead(**item.__dict__) for item in sliced_items],
+        page=paginated_data["page"],
+        limit=paginated_data["limit"],
+        total=paginated_data["total"],
+        items=[ItemRead.model_validate(item) for item in paginated_data["items"]],
     )
 
 
-@router.post("/items", response_model=ItemRead)
+@router.post("/items", response_model=ItemRead, tags=["Items"])
 def create_item(item: ItemCreate, db: Session = Depends(get_db), token: str = Depends(get_admin_token)):
-    repository = ItemRepository(db)
-    new_item = Item(**item.model_dump())
-    db.add(new_item)
-    db.commit()
-    db.refresh(new_item)
-    return ItemRead(**new_item.__dict__)
+    """Create a new item"""
+    item_repository = ItemRepository(db)
+    item_service = ItemService(item_repository)
+    new_item = item_service.create_item(item)
+    return ItemRead.model_validate(new_item)
 
 
-@router.get("/items/{item_id}", response_model=ItemRead)
+@router.get("/items/{item_id}", response_model=ItemRead, tags=["Items"])
 def get_item(item_id: int, db: Session = Depends(get_db), token: str = Depends(get_admin_token)):
-    repository = ItemRepository(db)
-    item = repository.get_item(item_id)
-    if item is None:
-        raise HTTPException(status_code=404, detail="Item not found")
-    return ItemRead(**item.__dict__)
+    """Get item by ID"""
+    item_repository = ItemRepository(db)
+    item_service = ItemService(item_repository)
+    item = item_service.get_item(item_id)
+    return ItemRead.model_validate(item)
 
 
-@router.put("/items/{item_id}", response_model=ItemRead)
+@router.put("/items/{item_id}", response_model=ItemRead, tags=["Items"])
 def update_item(item_id: int, item: ItemUpdate, db: Session = Depends(get_db), token: str = Depends(get_admin_token)):
-    repository = ItemRepository(db)
-    existing = repository.get_item(item_id)
-    if existing is None:
-        raise HTTPException(status_code=404, detail="Item not found")
-    for field, value in item.model_dump(exclude_unset=True).items():
-        setattr(existing, field, value)
-    db.commit()
-    db.refresh(existing)
-    return ItemRead(**existing.__dict__)
+    """Update an existing item"""
+    item_repository = ItemRepository(db)
+    item_service = ItemService(item_repository)
+    updated_item = item_service.update_item(item_id, item)
+    return ItemRead.model_validate(updated_item)
 
 
-@router.delete("/items/{item_id}")
+@router.delete("/items/{item_id}", tags=["Items"])
 def delete_item(item_id: int, db: Session = Depends(get_db), token: str = Depends(get_admin_token)):
-    repository = ItemRepository(db)
-    item = repository.get_item(item_id)
-    if item is None:
-        raise HTTPException(status_code=404, detail="Item not found")
-    db.delete(item)
-    db.commit()
+    """Delete an item"""
+    item_repository = ItemRepository(db)
+    item_service = ItemService(item_repository)
+    item_service.delete_item(item_id)
     return {"message": "Item deleted"}
 
 
-@router.get("/explain/{item_id}")
+@router.get("/explain/{item_id}", tags=["Recommendations"])
 def explain_item(item_id: int, db: Session = Depends(get_db)):
-    repository = ItemRepository(db)
-    item = repository.get_item(item_id)
-    if item is None:
-        raise HTTPException(status_code=404, detail="Item not found")
-    explanation = ExplainService().explain_item(item)
+    """Get explanation for why an item is recommended"""
+    item_repository = ItemRepository(db)
+    item_service = ItemService(item_repository)
+    explain_service = ExplainService()
+    
+    item = item_service.get_item(item_id)
+    explanation = explain_service.explain_item(item)
     return {"item_id": item_id, "explanation": explanation}

@@ -1,7 +1,38 @@
 import sqlite3
 from pathlib import Path
+import sys
+import os
+import subprocess
 
-DB_PATH = Path(__file__).resolve().parents[1] / "database" / "recommendation.db"
+# Add parent directory to path for imports
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from app.core.config import DATABASE_URL
+
+
+def get_db_path():
+    """Extract database path from DATABASE_URL"""
+    db_url = DATABASE_URL
+    if db_url.startswith("sqlite:///"):
+        return db_url.replace("sqlite:///", "")
+    return db_url
+
+
+def run_migrations():
+    """Run Alembic migrations to create/update database schema"""
+    print("Running database migrations...")
+    result = subprocess.run(
+        [sys.executable, "-m", "alembic", "upgrade", "head"],
+        cwd=str(Path(__file__).resolve().parents[1]),
+        capture_output=True,
+        text=True
+    )
+    if result.returncode != 0:
+        print(f"Migration failed: {result.stderr}")
+        return False
+    print("Migrations completed successfully")
+    return True
+
 
 ITEMS = [
     ("LaunchPad Bootcamp", "course", 120.0, "beginner", "career-switch", "remote", "steady", "Structured beginner course with coaching."),
@@ -23,25 +54,23 @@ ITEMS = [
 
 
 def seed_catalogue():
+    """Seed the database with sample items"""
+    # Run migrations first
+    if not run_migrations():
+        print("Failed to run migrations, aborting seed")
+        return
+    
+    DB_PATH = Path(get_db_path())
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    
     conn = sqlite3.connect(DB_PATH)
-    conn.execute(
-        """
-        CREATE TABLE IF NOT EXISTS items (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            category TEXT NOT NULL,
-            price REAL NOT NULL,
-            skill_level TEXT NOT NULL,
-            goal TEXT NOT NULL,
-            location TEXT NOT NULL,
-            pace TEXT NOT NULL,
-            description TEXT NOT NULL
-        )
-        """
-    )
     conn.execute("DELETE FROM items")
-    conn.execute('DELETE FROM sqlite_sequence WHERE name = "items"')
+    # Reset auto-increment if sqlite_sequence exists
+    try:
+        conn.execute("DELETE FROM sqlite_sequence WHERE name='items'")
+    except sqlite3.OperationalError:
+        # sqlite_sequence table doesn't exist, skip
+        pass
     conn.executemany(
         "INSERT INTO items (name, category, price, skill_level, goal, location, pace, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
         ITEMS,
@@ -51,5 +80,32 @@ def seed_catalogue():
     print(f"Seeded {len(ITEMS)} items into {DB_PATH}")
 
 
+def cleanup_catalogue():
+    """Remove all items from the database"""
+    DB_PATH = Path(get_db_path())
+    if not DB_PATH.exists():
+        print(f"Database {DB_PATH} does not exist")
+        return
+    
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute("DELETE FROM items")
+    conn.execute('DELETE FROM sqlite_sequence WHERE name = "items"')
+    conn.commit()
+    conn.close()
+    print(f"Cleaned up all items from {DB_PATH}")
+
+
 if __name__ == "__main__":
-    seed_catalogue()
+    import argparse
+    
+    parser = argparse.ArgumentParser(description="Database seed script")
+    parser.add_argument("--cleanup", action="store_true", help="Clean up database instead of seeding")
+    parser.add_argument("--migrate-only", action="store_true", help="Only run migrations without seeding")
+    args = parser.parse_args()
+    
+    if args.cleanup:
+        cleanup_catalogue()
+    elif args.migrate_only:
+        run_migrations()
+    else:
+        seed_catalogue()

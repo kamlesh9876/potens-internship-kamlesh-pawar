@@ -1,8 +1,10 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
+from datetime import datetime
 
 
 class ItemBase(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     name: str
     category: str
     price: float
@@ -19,9 +21,12 @@ class ItemCreate(ItemBase):
 
 class ItemRead(ItemBase):
     id: int
+    created_at: datetime
+    updated_at: datetime
 
 
 class ItemUpdate(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     name: Optional[str] = None
     category: Optional[str] = None
     price: Optional[float] = None

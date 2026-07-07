@@ -1,8 +1,9 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import List, Optional
 
 
 class ProfileInput(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     age: int
     budget: float
     experience_level: str
@@ -12,6 +13,7 @@ class ProfileInput(BaseModel):
 
 
 class RecommendationItem(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     item_id: int
     name: str
     score: float
@@ -19,4 +21,5 @@ class RecommendationItem(BaseModel):
 
 
 class RecommendationResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     recommendations: List[RecommendationItem]

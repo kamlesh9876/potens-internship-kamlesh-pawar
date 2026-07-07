@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, Text
+from sqlalchemy import Column, Integer, String, Float, Text, DateTime, func
 from app.db.database import Base
 
 
@@ -14,3 +14,5 @@ class Item(Base):
     location = Column(String, nullable=False)
     pace = Column(String, nullable=False)
     description = Column(Text, nullable=False)
+    created_at = Column(DateTime, server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)

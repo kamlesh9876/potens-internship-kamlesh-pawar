@@ -1,9 +1,17 @@
 from typing import List, Dict, Any
+from app.repositories.item_repository import ItemRepository
+from app.core.logging import logger
 
 
 class RecommendationService:
-    def build_recommendations(self, profile, items) -> List[Dict[str, Any]]:
+    def __init__(self, item_repository: ItemRepository):
+        self.item_repository = item_repository
+
+    def build_recommendations(self, profile) -> List[Dict[str, Any]]:
+        """Build recommendations based on user profile"""
+        items = self.item_repository.list_items()
         scored = []
+        
         for item in items:
             score = 0.0
             reasons = []
@@ -46,4 +54,5 @@ class RecommendationService:
                 scored.append({"item_id": item.id, "name": item.name, "score": score, "reason": reason})
 
         scored.sort(key=lambda item: item["score"], reverse=True)
+        logger.info(f"Generated {len(scored[:3])} recommendations for profile with goal: {profile.goal}")
         return scored[:3]
