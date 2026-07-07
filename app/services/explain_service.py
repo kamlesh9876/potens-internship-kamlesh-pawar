@@ -1,0 +1,7 @@
+class ExplainService:
+    def explain_item(self, item) -> str:
+        return (
+            f"This item is suitable when the learner's goal matches '{item.goal}', "
+            f"the budget fits the item price of {item.price}, "
+            f"the skill level aligns with '{item.skill_level}', and the location matches '{item.location}'."
+        )
