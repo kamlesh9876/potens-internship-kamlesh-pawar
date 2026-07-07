@@ -3,7 +3,9 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from app.api.routes import router
+from app.api.routes import router as item_router
+from app.api.auth_routes import router as auth_router
+from app.api.user_routes import router as user_router
 from app.core.exceptions import AppError
 from app.core.logging import logger
 
@@ -68,4 +70,6 @@ async def generic_exception_handler(request: Request, exc: Exception):
     })
 
 
-app.include_router(router)
+app.include_router(item_router)
+app.include_router(auth_router, prefix="/auth")
+app.include_router(user_router, prefix="/users")

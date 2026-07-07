@@ -20,3 +20,5 @@ Traceback (most recent call last):
   File "D:\potens internship\.venv\Lib\site-packages\sqlalchemy\sql\coercions.py", line 584, in _no_text_coercion
     raise exc_cls(
 sqlalchemy.exc.ArgumentError: Textual SQL expression 'SELECT 1' should be explicitly declared as text('SELECT 1')
+2026-07-07 21:50:33,288 INFO skillpath Generated 0 recommendations for profile with goal: Developer Job
+2026-07-07 21:51:36,911 INFO skillpath Generated explanation for item 2: Career Pivot Accelerator

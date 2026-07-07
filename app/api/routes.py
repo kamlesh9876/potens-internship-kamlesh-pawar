@@ -1,8 +1,8 @@
-from fastapi import APIRouter, Depends, Header, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from app.core.config import ADMIN_TOKEN, APP_NAME
+from app.core.config import APP_NAME
 from app.core.exceptions import AppError
 from app.core.logging import logger
 from app.db.session import get_db
@@ -14,14 +14,10 @@ from app.services.recommendation_service import RecommendationService
 from app.services.explain_service import ExplainService
 from app.services.item_service import ItemService
 from app.schemas.response import ApiResponse
+from app.core.dependencies import get_current_active_user, get_current_admin_user
+from app.models.user import User
 
 router = APIRouter()
-
-
-def get_admin_token(x_admin_token: Optional[str] = Header(None)) -> str:
-    if x_admin_token != ADMIN_TOKEN:
-        raise HTTPException(status_code=401, detail="Admin token required")
-    return x_admin_token
 
 
 @router.get("/health", tags=["Health"])
@@ -48,7 +44,11 @@ def health_database(db: Session = Depends(get_db)):
 
 
 @router.post("/recommend", response_model=RecommendationResponse, tags=["Recommendations"])
-def recommend(profile: ProfileInput, db: Session = Depends(get_db)):
+def recommend(
+    profile: ProfileInput, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
     """Get personalized recommendations based on user profile"""
     item_repository = ItemRepository(db)
     recommendation_service = RecommendationService(item_repository)
@@ -66,9 +66,9 @@ def list_items(
     location: Optional[str] = Query(None, description="Filter by location"),
     skill_level: Optional[str] = Query(None, description="Filter by skill level"),
     db: Session = Depends(get_db),
-    token: str = Depends(get_admin_token),
+    current_user: User = Depends(get_current_admin_user),
 ):
-    """List items with pagination and filtering"""
+    """List items with pagination and filtering (admin only)"""
     item_repository = ItemRepository(db)
     item_service = ItemService(item_repository)
     
@@ -90,8 +90,12 @@ def list_items(
 
 
 @router.post("/items", response_model=ItemRead, tags=["Items"])
-def create_item(item: ItemCreate, db: Session = Depends(get_db), token: str = Depends(get_admin_token)):
-    """Create a new item"""
+def create_item(
+    item: ItemCreate, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user)
+):
+    """Create a new item (admin only)"""
     item_repository = ItemRepository(db)
     item_service = ItemService(item_repository)
     new_item = item_service.create_item(item)
@@ -99,8 +103,12 @@ def create_item(item: ItemCreate, db: Session = Depends(get_db), token: str = De
 
 
 @router.get("/items/{item_id}", response_model=ItemRead, tags=["Items"])
-def get_item(item_id: int, db: Session = Depends(get_db), token: str = Depends(get_admin_token)):
-    """Get item by ID"""
+def get_item(
+    item_id: int, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user)
+):
+    """Get item by ID (admin only)"""
     item_repository = ItemRepository(db)
     item_service = ItemService(item_repository)
     item = item_service.get_item(item_id)
@@ -108,8 +116,13 @@ def get_item(item_id: int, db: Session = Depends(get_db), token: str = Depends(g
 
 
 @router.put("/items/{item_id}", response_model=ItemRead, tags=["Items"])
-def update_item(item_id: int, item: ItemUpdate, db: Session = Depends(get_db), token: str = Depends(get_admin_token)):
-    """Update an existing item"""
+def update_item(
+    item_id: int, 
+    item: ItemUpdate, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user)
+):
+    """Update an existing item (admin only)"""
     item_repository = ItemRepository(db)
     item_service = ItemService(item_repository)
     updated_item = item_service.update_item(item_id, item)
@@ -117,8 +130,12 @@ def update_item(item_id: int, item: ItemUpdate, db: Session = Depends(get_db), t
 
 
 @router.delete("/items/{item_id}", tags=["Items"])
-def delete_item(item_id: int, db: Session = Depends(get_db), token: str = Depends(get_admin_token)):
-    """Delete an item"""
+def delete_item(
+    item_id: int, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user)
+):
+    """Delete an item (admin only)"""
     item_repository = ItemRepository(db)
     item_service = ItemService(item_repository)
     item_service.delete_item(item_id)
@@ -126,7 +143,11 @@ def delete_item(item_id: int, db: Session = Depends(get_db), token: str = Depend
 
 
 @router.get("/explain/{item_id}", tags=["Recommendations"])
-def explain_item(item_id: int, db: Session = Depends(get_db)):
+def explain_item(
+    item_id: int, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
     """Get explanation for why an item is recommended"""
     item_repository = ItemRepository(db)
     item_service = ItemService(item_repository)
