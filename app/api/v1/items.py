@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -16,6 +16,7 @@ from app.services.item_service import ItemService
 from app.schemas.response import ApiResponse
 from app.core.dependencies import get_current_active_user, get_current_admin_user
 from app.models.user import User
+from app.background.tasks import save_recommendation_history, generate_item_analytics
 
 router = APIRouter()
 
@@ -23,7 +24,24 @@ router = APIRouter()
 @router.get("/health", tags=["Health"])
 def healthcheck():
     """Health check endpoint"""
-    return ApiResponse(success=True, message="Service is healthy", data={"name": APP_NAME, "status": "Running"}).model_dump()
+    import time
+    from app.core.config import APP_VERSION, DEBUG
+    from app.main import _start_time
+    
+    uptime = time.time() - _start_time
+    uptime_str = f"{int(uptime // 3600)}h {int((uptime % 3600) // 60)}m" if uptime > 60 else f"{int(uptime)}s"
+    
+    return ApiResponse(
+        success=True, 
+        message="Service is healthy", 
+        data={
+            "name": APP_NAME,
+            "version": APP_VERSION,
+            "status": "healthy",
+            "uptime": uptime_str,
+            "environment": "production" if not DEBUG else "development"
+        }
+    ).model_dump()
 
 
 @router.get("/health/application", tags=["Health"])
@@ -43,20 +61,55 @@ def health_database(db: Session = Depends(get_db)):
         raise AppError("Database unavailable", status_code=503) from exc
 
 
-@router.post("/recommend", response_model=RecommendationResponse, tags=["Recommendations"])
+@router.get("/metrics", tags=["Health"])
+def get_metrics():
+    """Get application metrics"""
+    from app.metrics.metrics import metrics
+    return metrics.get_metrics()
+
+
+@router.post(
+    "/recommend", 
+    response_model=RecommendationResponse, 
+    tags=["Recommendations"],
+    summary="Get personalized recommendations",
+    description="Generate personalized skill path recommendations based on user profile including age, budget, experience level, goals, and location.",
+    responses={
+        200: {"description": "Recommendations generated successfully"},
+        401: {"description": "Unauthorized - authentication required"}
+    }
+)
 def recommend(
     profile: ProfileInput, 
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
+    background_tasks: BackgroundTasks = BackgroundTasks()
 ):
     """Get personalized recommendations based on user profile"""
     item_repository = ItemRepository(db)
     recommendation_service = RecommendationService(item_repository)
     recommendations = recommendation_service.build_recommendations(profile)
+    
+    # Save recommendation history in background
+    profile_dict = profile.model_dump()
+    recommendations_list = [r.model_dump() for r in recommendations]
+    background_tasks.add_task(save_recommendation_history, current_user.id, profile_dict, recommendations_list)
+    
     return RecommendationResponse(recommendations=recommendations)
 
 
-@router.get("/items", response_model=PaginatedResponse[ItemRead], tags=["Items"])
+@router.get(
+    "/items", 
+    response_model=PaginatedResponse[ItemRead], 
+    tags=["Items"],
+    summary="List items with filtering and pagination",
+    description="Retrieve a paginated list of items with advanced filtering, search, and sorting capabilities. Admin only.",
+    responses={
+        200: {"description": "Items retrieved successfully"},
+        401: {"description": "Unauthorized - authentication required"},
+        403: {"description": "Forbidden - admin access required"}
+    }
+)
 def list_items(
     page: int = Query(1, ge=1, description="Page number"),
     limit: int = Query(20, ge=1, le=100, description="Items per page"),
@@ -73,6 +126,16 @@ def list_items(
     current_user: User = Depends(get_current_admin_user),
 ):
     """List items with advanced filtering, search, sorting, and pagination (admin only)"""
+    from app.cache.cache import cache
+    
+    # Create cache key
+    cache_key = f"items_{page}_{limit}_{category}_{location}_{goal}_{skill_level}_{price_min}_{price_max}_{search}_{sort_by}_{order}"
+    
+    # Try cache first
+    cached_response = cache.get(cache_key)
+    if cached_response:
+        return cached_response
+    
     item_repository = ItemRepository(db)
     item_service = ItemService(item_repository)
     
@@ -86,7 +149,7 @@ def list_items(
     }
     
     paginated_data = item_service.get_paginated_items(page, limit, filters, search, sort_by, order)
-    return PaginatedResponse(
+    response = PaginatedResponse(
         page=paginated_data["page"],
         limit=paginated_data["limit"],
         total=paginated_data["total"],
@@ -95,18 +158,33 @@ def list_items(
         has_previous=paginated_data["has_previous"],
         items=[ItemRead.model_validate(item) for item in paginated_data["items"]],
     )
+    
+    # Cache response for 5 minutes
+    cache.set(cache_key, response, ttl=300)
+    
+    return response
 
 
 @router.post("/items", response_model=ItemRead, tags=["Items"])
 def create_item(
     item: ItemCreate, 
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_admin_user)
+    current_user: User = Depends(get_current_admin_user),
+    background_tasks: BackgroundTasks = BackgroundTasks()
 ):
     """Create a new item (admin only)"""
+    from app.cache.cache import cache
+    
     item_repository = ItemRepository(db)
     item_service = ItemService(item_repository)
     new_item = item_service.create_item(item)
+    
+    # Invalidate items cache
+    cache.invalidate_cache("items_")
+    
+    # Generate analytics in background
+    background_tasks.add_task(generate_item_analytics, new_item.id)
+    
     return ItemRead.model_validate(new_item)
 
 

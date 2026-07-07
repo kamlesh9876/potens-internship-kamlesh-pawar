@@ -9,4 +9,7 @@ class PaginatedResponse(BaseModel, Generic[T]):
     page: int
     limit: int
     total: int
+    total_pages: int
+    has_next: bool
+    has_previous: bool
     items: List[T]

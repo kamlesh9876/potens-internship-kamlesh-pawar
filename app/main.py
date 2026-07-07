@@ -1,15 +1,27 @@
+import time
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from app.api.routes import router as item_router
-from app.api.auth_routes import router as auth_router
-from app.api.user_routes import router as user_router
+from app.api.v1.items import router as item_router
+from app.api.v1.auth import router as auth_router
+from app.api.v1.users import router as user_router
 from app.core.exceptions import AppError
 from app.core.logging import logger
+from app.middleware.logging import RequestLoggingMiddleware
+from app.middleware.security import SecurityHeadersMiddleware
+from app.middleware.rate_limit import RateLimitMiddleware
 
 app = FastAPI(title="SkillPath Recommendation API")
+
+# Store start time for uptime calculation
+_start_time = time.time()
+
+# Add middleware
+app.add_middleware(RequestLoggingMiddleware)
+app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(RateLimitMiddleware, calls=100, period=60)
 
 
 @app.exception_handler(AppError)
@@ -70,6 +82,6 @@ async def generic_exception_handler(request: Request, exc: Exception):
     })
 
 
-app.include_router(item_router)
-app.include_router(auth_router, prefix="/auth")
-app.include_router(user_router, prefix="/users")
+app.include_router(item_router, prefix="/api/v1")
+app.include_router(auth_router, prefix="/api/v1/auth")
+app.include_router(user_router, prefix="/api/v1/users")
