@@ -65,25 +65,25 @@ I chose skill recommendations because the matching process naturally requires mu
 ## Screenshots
 
 ### Swagger UI
-![Swagger UI Overview](sceenshot/Screenshot2026-07-08160555.png)
+![Swagger UI Overview](screenshot/swagger_ui.png)
 
 ### Recommendation Endpoint
-![Swagger Recommend Endpoint](screenshot/Screenshot202026-07-0820160618.png)
+![Swagger Recommend Endpoint](screenshot/register.png)
 
 ### Authentication Endpoints
-![Swagger Auth Endpoints](screenshot/Screenshot202026-07-0820160818%20-20Copy.png)
+![Swagger Auth Endpoints](screenshot/register_output.png)
 
 ### Try It Out
-![Swagger Try It Out](screenshot/Screenshot202026-07-0820160835.png)
+![Swagger Try It Out](screenshot/item_id.png)
 
 ### SQLite Schema
-![SQLite Schema](screenshot/Screenshot202026-07-0820160929.png)
+![SQLite Schema](screenshot/alembic.png)
 
 ### Users Table
-![SQLite Users Table](screenshot/Screenshot202026-07-0820161011.png)
+![SQLite Users Table](screenshot/users.png)
 
 ### Items Table
-![SQLite Items Table](screenshot/Screenshot202026-07-0820161027.png)
+![SQLite Items Table](screenshot/items.png)
 
 ---
 
