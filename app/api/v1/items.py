@@ -180,7 +180,7 @@ def create_item(
     new_item = item_service.create_item(item)
     
     # Invalidate items cache
-    cache.invalidate_cache("items_")
+    cache.clear()
     
     # Generate analytics in background
     background_tasks.add_task(generate_item_analytics, new_item.id)

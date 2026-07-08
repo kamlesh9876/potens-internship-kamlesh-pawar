@@ -1,4 +1,6 @@
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+
+COMMON_PASSWORDS = {"password123", "password", "12345678", "qwerty", "letmein"}
 from typing import Optional
 from datetime import datetime
 
@@ -22,6 +24,8 @@ class UserCreate(UserBase):
             raise ValueError('Password must contain at least one lowercase letter')
         if not any(c.isdigit() for c in v):
             raise ValueError('Password must contain at least one digit')
+        if v.lower() in COMMON_PASSWORDS:
+            raise ValueError('Password is too common')
         return v
 
 
@@ -53,6 +57,8 @@ class ChangePassword(BaseModel):
             raise ValueError('Password must contain at least one lowercase letter')
         if not any(c.isdigit() for c in v):
             raise ValueError('Password must contain at least one digit')
+        if v.lower() in COMMON_PASSWORDS:
+            raise ValueError('Password is too common')
         return v
 
 

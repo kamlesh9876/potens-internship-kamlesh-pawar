@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional
 from datetime import datetime
 
@@ -12,7 +12,7 @@ class ItemBase(BaseModel):
     goal: str
     location: str
     pace: str
-    description: str
+    description: str = Field(..., max_length=10000)
 
 
 class ItemCreate(ItemBase):

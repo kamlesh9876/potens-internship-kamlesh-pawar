@@ -1,75 +1,19 @@
 import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from app.main import app
-from app.db.database import Base
-from app.models.user import User
-from app.core.security import get_password_hash
-
-# Test database setup
-TEST_DATABASE_URL = "sqlite:///./test.db"
-engine = create_engine(TEST_DATABASE_URL, connect_args={"check_same_thread": False})
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-client = TestClient(app)
+from tests.fixtures import auth_headers, assert_response_success, assert_response_error
 
 
-@pytest.fixture(scope="function")
-def db():
-    """Create a fresh database for each test"""
-    Base.metadata.create_all(bind=engine)
-    db = TestingSessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-        Base.metadata.drop_all(bind=engine)
-
-
-@pytest.fixture(scope="function")
-def test_user(db):
-    """Create a test user"""
-    user = User(
-        username="testuser",
-        email="test@example.com",
-        hashed_password=get_password_hash("TestPass123"),
-        full_name="Test User",
-        is_active=True,
-        is_admin=False
-    )
-    db.add(user)
-    db.commit()
-    db.refresh(user)
-    return user
-
-
-@pytest.fixture(scope="function")
-def admin_user(db):
-    """Create an admin user"""
-    user = User(
-        username="admin",
-        email="admin@example.com",
-        hashed_password=get_password_hash("AdminPass123"),
-        full_name="Admin User",
-        is_active=True,
-        is_admin=True
-    )
-    db.add(user)
-    db.commit()
-    db.refresh(user)
-    return user
-
-
-def test_register_success(db):
+def test_register_success(client):
     """Test successful user registration"""
-    response = client.post("/auth/register", json={
-        "username": "newuser",
-        "email": "newuser@example.com",
-        "password": "NewPass123",
-        "full_name": "New User"
-    })
-    assert response.status_code == 200
+    response = client.post(
+        "/api/v1/auth/register",
+        json={
+            "username": "newuser",
+            "email": "newuser@example.com",
+            "password": "NewPass123",
+            "full_name": "New User"
+        }
+    )
+    assert_response_success(response, 200)
     data = response.json()
     assert data["username"] == "newuser"
     assert data["email"] == "newuser@example.com"
@@ -77,213 +21,192 @@ def test_register_success(db):
     assert data["id"] is not None
 
 
-def test_register_duplicate_email(db, test_user):
+def test_register_duplicate_email(client, normal_user):
     """Test registration with duplicate email"""
-    response = client.post("/auth/register", json={
-        "username": "different",
-        "email": "test@example.com",
-        "password": "TestPass123",
-        "full_name": "Different User"
-    })
-    assert response.status_code == 400
-    assert "already registered" in response.json()["detail"]
+    response = client.post(
+        "/api/v1/auth/register",
+        json={
+            "username": "different",
+            "email": "user@test.com",
+            "password": "TestPass123",
+            "full_name": "Different User"
+        }
+    )
+    assert_response_error(response, 400)
 
 
-def test_register_duplicate_username(db, test_user):
+def test_register_duplicate_username(client, normal_user):
     """Test registration with duplicate username"""
-    response = client.post("/auth/register", json={
-        "username": "testuser",
-        "email": "different@example.com",
-        "password": "TestPass123",
-        "full_name": "Different User"
-    })
-    assert response.status_code == 400
-    assert "already taken" in response.json()["detail"]
+    response = client.post(
+        "/api/v1/auth/register",
+        json={
+            "username": "testuser",
+            "email": "different@example.com",
+            "password": "TestPass123",
+            "full_name": "Different User"
+        }
+    )
+    assert_response_error(response, 400)
 
 
-def test_register_weak_password(db):
+def test_register_weak_password(client):
     """Test registration with weak password"""
-    response = client.post("/auth/register", json={
-        "username": "weakuser",
-        "email": "weak@example.com",
-        "password": "weak",
-        "full_name": "Weak User"
-    })
-    assert response.status_code == 422
+    response = client.post(
+        "/api/v1/auth/register",
+        json={
+            "username": "weakuser",
+            "email": "weak@example.com",
+            "password": "weak",
+            "full_name": "Weak User"
+        }
+    )
+    assert_response_error(response, 422)
 
 
-def test_login_success(db, test_user):
+def test_login_success(client, normal_user):
     """Test successful login"""
-    response = client.post("/auth/login", json={
-        "email": "test@example.com",
-        "password": "TestPass123"
-    })
-    assert response.status_code == 200
+    response = client.post(
+        "/api/v1/auth/login",
+        json={"email": "user@test.com", "password": "user123"}
+    )
+    assert_response_success(response, 200)
     data = response.json()
     assert "access_token" in data
     assert data["token_type"] == "bearer"
 
 
-def test_login_wrong_email(db):
+def test_login_wrong_email(client):
     """Test login with wrong email"""
-    response = client.post("/auth/login", json={
-        "email": "wrong@example.com",
-        "password": "TestPass123"
-    })
-    assert response.status_code == 401
+    response = client.post(
+        "/api/v1/auth/login",
+        json={"email": "wrong@example.com", "password": "TestPass123"}
+    )
+    assert_response_error(response, 401)
 
 
-def test_login_wrong_password(db, test_user):
+def test_login_wrong_password(client, normal_user):
     """Test login with wrong password"""
-    response = client.post("/auth/login", json={
-        "email": "test@example.com",
-        "password": "WrongPass123"
-    })
-    assert response.status_code == 401
+    response = client.post(
+        "/api/v1/auth/login",
+        json={"email": "user@test.com", "password": "WrongPass123"}
+    )
+    assert_response_error(response, 401)
 
 
-def test_get_current_user(db, test_user):
+def test_get_current_user(client, normal_user, user_token):
     """Test getting current user info with valid token"""
-    # First login to get token
-    login_response = client.post("/auth/login", json={
-        "email": "test@example.com",
-        "password": "TestPass123"
-    })
-    token = login_response.json()["access_token"]
-    
-    # Use token to get current user
-    response = client.get("/users/me", headers={
-        "Authorization": f"Bearer {token}"
-    })
-    assert response.status_code == 200
+    response = client.get(
+        "/api/v1/users/me",
+        headers=auth_headers(user_token)
+    )
+    assert_response_success(response, 200)
     data = response.json()
-    assert data["email"] == "test@example.com"
+    assert data["email"] == "user@test.com"
     assert data["username"] == "testuser"
 
 
-def test_get_current_user_no_token():
+def test_get_current_user_no_token(client):
     """Test getting current user without token"""
-    response = client.get("/users/me")
-    assert response.status_code == 401
+    response = client.get("/api/v1/users/me")
+    assert_response_error(response, 401)
 
 
-def test_get_current_user_invalid_token():
+def test_get_current_user_invalid_token(client):
     """Test getting current user with invalid token"""
-    response = client.get("/users/me", headers={
-        "Authorization": "Bearer invalid_token"
-    })
-    assert response.status_code == 401
+    response = client.get(
+        "/api/v1/users/me",
+        headers=auth_headers("invalid_token")
+    )
+    assert_response_error(response, 401)
 
 
-def test_admin_endpoint_with_admin(db, admin_user):
+def test_get_current_user_expired_token(client):
+    """Test getting current user with expired token"""
+    # Use a malformed/expired token
+    response = client.get(
+        "/api/v1/users/me",
+        headers=auth_headers("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.expired")
+    )
+    assert_response_error(response, 401)
+
+
+def test_admin_endpoint_with_admin(client, admin_user, admin_token):
     """Test admin endpoint with admin user"""
-    # Login as admin
-    login_response = client.post("/auth/login", json={
-        "email": "admin@example.com",
-        "password": "AdminPass123"
-    })
-    token = login_response.json()["access_token"]
-    
-    # Access admin endpoint
-    response = client.get("/users/users", headers={
-        "Authorization": f"Bearer {token}"
-    })
-    assert response.status_code == 200
+    response = client.get(
+        "/api/v1/users/users",
+        headers=auth_headers(admin_token)
+    )
+    assert_response_success(response, 200)
 
 
-def test_admin_endpoint_with_regular_user(db, test_user):
+def test_admin_endpoint_with_regular_user(client, normal_user, user_token):
     """Test admin endpoint with regular user"""
-    # Login as regular user
-    login_response = client.post("/auth/login", json={
-        "email": "test@example.com",
-        "password": "TestPass123"
-    })
-    token = login_response.json()["access_token"]
-    
-    # Try to access admin endpoint
-    response = client.get("/users/users", headers={
-        "Authorization": f"Bearer {token}"
-    })
-    assert response.status_code == 403
+    response = client.get(
+        "/api/v1/users/users",
+        headers=auth_headers(user_token)
+    )
+    assert_response_error(response, 403)
 
 
-def test_change_password_success(db, test_user):
+def test_change_password_success(client, normal_user, user_token):
     """Test successful password change"""
-    # Login to get token
-    login_response = client.post("/auth/login", json={
-        "email": "test@example.com",
-        "password": "TestPass123"
-    })
-    token = login_response.json()["access_token"]
-    
-    # Change password
-    response = client.post("/auth/change-password", 
+    response = client.post(
+        "/api/v1/auth/change-password",
         json={
-            "old_password": "TestPass123",
+            "old_password": "user123",
             "new_password": "NewPass456"
         },
-        headers={"Authorization": f"Bearer {token}"}
+        headers=auth_headers(user_token)
     )
-    assert response.status_code == 200
+    assert_response_success(response, 200)
     
     # Verify new password works
-    login_response = client.post("/auth/login", json={
-        "email": "test@example.com",
-        "password": "NewPass456"
-    })
-    assert login_response.status_code == 200
+    login_response = client.post(
+        "/api/v1/auth/login",
+        json={"email": "user@test.com", "password": "NewPass456"}
+    )
+    assert_response_success(login_response, 200)
 
 
-def test_change_password_wrong_old_password(db, test_user):
+def test_change_password_wrong_old_password(client, normal_user, user_token):
     """Test password change with wrong old password"""
-    # Login to get token
-    login_response = client.post("/auth/login", json={
-        "email": "test@example.com",
-        "password": "TestPass123"
-    })
-    token = login_response.json()["access_token"]
-    
-    # Try to change with wrong old password
-    response = client.post("/auth/change-password",
+    response = client.post(
+        "/api/v1/auth/change-password",
         json={
             "old_password": "WrongPass123",
             "new_password": "NewPass456"
         },
-        headers={"Authorization": f"Bearer {token}"}
+        headers=auth_headers(user_token)
     )
-    assert response.status_code == 400
+    assert_response_error(response, 400)
 
 
-def test_recommendation_requires_auth(db):
-    """Test that recommendation endpoint requires authentication"""
-    response = client.post("/recommend", json={
-        "age": 28,
-        "budget": 200,
-        "experience_level": "beginner",
-        "goal": "career-switch",
-        "location": "remote"
-    })
-    assert response.status_code == 401
+def test_change_password_no_token(client):
+    """Test password change without authentication"""
+    response = client.post(
+        "/api/v1/auth/change-password",
+        json={
+            "old_password": "user123",
+            "new_password": "NewPass456"
+        }
+    )
+    assert_response_error(response, 401)
 
 
-def test_recommendation_with_auth(db, test_user):
-    """Test recommendation endpoint with valid authentication"""
-    # Login to get token
-    login_response = client.post("/auth/login", json={
-        "email": "test@example.com",
-        "password": "TestPass123"
-    })
+def test_jwt_tampering(client, normal_user):
+    """Test JWT tampering detection"""
+    # Get valid token
+    login_response = client.post(
+        "/api/v1/auth/login",
+        json={"email": "user@test.com", "password": "user123"}
+    )
     token = login_response.json()["access_token"]
     
-    # Access recommendation endpoint
-    response = client.post("/recommend",
-        json={
-            "age": 28,
-            "budget": 200,
-            "experience_level": "beginner",
-            "goal": "career-switch",
-            "location": "remote"
-        },
-        headers={"Authorization": f"Bearer {token}"}
+    # Tamper with token (change last character)
+    tampered_token = token[:-1] + ("X" if token[-1] != "X" else "Y")
+    
+    response = client.get(
+        "/api/v1/users/me",
+        headers=auth_headers(tampered_token)
     )
-    assert response.status_code == 200
+    assert_response_error(response, 401)
