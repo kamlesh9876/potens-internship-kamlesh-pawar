@@ -1,8 +1,8 @@
 # SkillPath Recommendation API
 
-**Submission: Potens Internship 2026**  
-**Role: Backend**  
-**Question: Q2 – Profile-to-Recommendation API**
+**Submission:** Potens Internship 2026
+**Role:** Backend
+**Question:** Q2 – Profile-to-Recommendation API
 
 ![Python](https://img.shields.io/badge/Python-3.11-blue)
 ![FastAPI](https://img.shields.io/badge/FastAPI-Latest-green)
@@ -10,13 +10,36 @@
 ![Tests](https://img.shields.io/badge/Tests-116_Passing-brightgreen)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 
-Submission: Potens Internship 2026
+---
+
+## Table of Contents
+- [Highlights](#highlights)
+- [Overview](#overview)
+- [Screenshots](#screenshots)
+- [Features](#features)
+- [Tech Stack & Design Decisions](#tech-stack--design-decisions)
+- [Architecture](#architecture)
+- [Setup Instructions](#setup-instructions)
+- [Database Setup](#database-setup)
+- [Run Instructions](#run-instructions)
+- [API Documentation](#api-documentation)
+- [Example Requests](#example-requests)
+- [Testing](#testing)
+- [Assumptions](#assumptions)
+- [Limitations](#limitations)
+- [Future Improvements](#future-improvements)
+- [AI Use Declaration](#ai-use-declaration)
+- [Phase Completion](#phase-completion)
+- [License](#license)
+
+---
+
 ## Highlights
 - ✅ Explainable recommendation engine with weighted scoring
 - ✅ 16-item catalogue with diverse eligibility rules
-- ✅ JWT Authentication with role-based access control
+- ✅ JWT authentication with role-based access control
 - ✅ Admin CRUD operations for catalogue management
-- ✅ GET /explain/{id} endpoint for recommendation explanations
+- ✅ `GET /explain/{id}` endpoint for recommendation explanations
 - ✅ Alembic database migrations
 - ✅ Rate limiting (100 requests/minute)
 - ✅ In-memory caching with TTL
@@ -35,6 +58,23 @@ I chose skill recommendations because the matching process naturally requires mu
 - Real-world business constraints
 - Diverse data relationships
 
+---
+
+## Screenshots
+
+| | |
+|---|---|
+| ![Swagger UI Overview](sceenshots\Screenshot 2026-07-08 160555.png) | ![Swagger Recommend Endpoint](D:\potens internship\sceenshots\Screenshot 2026-07-08 160618.png) |
+| ![Swagger Auth Endpoints](D:\potens internship\sceenshots\Screenshot 2026-07-08 160818 - Copy.png) | ![Swagger Try It Out](D:\potens internship\sceenshots\Screenshot 2026-07-08 160835.png) |
+| ![SQLite Schema](sceenshots\Screenshot 2026-07-08 160929.png) | ![SQLite Users Table](sceenshots\Screenshot 2026-07-08 161011.png) |
+| ![SQLite Items Table](sceenshots\Screenshot 2026-07-08 161027.png) |
+ 
+
+ 
+---
+
+---
+
 ## Features
 - **Recommendation Engine**: Personalized skill path recommendations with weighted scoring and explainable results
 - **JWT Authentication**: Secure token-based authentication with role-based access control
@@ -49,6 +89,8 @@ I chose skill recommendations because the matching process naturally requires mu
 - **Security Headers**: Comprehensive security headers (X-Content-Type-Options, X-Frame-Options, etc.)
 - **Request Logging**: Structured logging with request ID tracking for debugging
 
+---
+
 ## Tech Stack & Design Decisions
 
 ### Why FastAPI?
@@ -60,7 +102,7 @@ I chose skill recommendations because the matching process naturally requires mu
 ### Why SQLite?
 - **Lightweight**: No separate database server required for evaluation
 - **Easy Setup**: Single file database, zero configuration
-- **Production-Ready**: Schema is PostgreSQL-ready with simple connection string change
+- **Production-Ready**: Schema is PostgreSQL-ready with a simple connection string change
 - **Sufficient for Assignment**: Handles 16 items and user data comfortably
 
 ### Why Layered Architecture?
@@ -76,15 +118,19 @@ I chose skill recommendations because the matching process naturally requires mu
 - **Consistency**: Standardized data access patterns
 
 ### Technologies Used
-- **FastAPI**: Modern web framework with automatic OpenAPI docs
-- **SQLAlchemy**: ORM for database operations with type safety
-- **Alembic**: Database migration management
-- **Pydantic**: Data validation and serialization
-- **JWT**: Stateless authentication
-- **Python 3.11+**: Runtime environment
-- **SQLite**: Lightweight database (PostgreSQL-ready)
-- **pytest**: Testing framework
-- **uvicorn**: ASGI server
+| Technology | Purpose |
+|---|---|
+| FastAPI | Modern web framework with automatic OpenAPI docs |
+| SQLAlchemy | ORM for database operations with type safety |
+| Alembic | Database migration management |
+| Pydantic | Data validation and serialization |
+| JWT | Stateless authentication |
+| Python 3.11+ | Runtime environment |
+| SQLite | Lightweight database (PostgreSQL-ready) |
+| pytest | Testing framework |
+| uvicorn | ASGI server |
+
+---
 
 ## Architecture
 
@@ -108,25 +154,26 @@ app/
 potens-internship-backend-Q2/
 ├── app/
 │   ├── api/             # API endpoints
-│   │   └── v1/         # Versioned API
+│   │   └── v1/          # Versioned API
 │   ├── background/      # Background tasks
-│   ├── cache/           # Caching implementation
-│   ├── core/            # Core utilities
-│   ├── db/              # Database configuration
-│   ├── metrics/         # Metrics collection
-│   ├── middleware/      # Custom middleware
-│   ├── models/          # SQLAlchemy models
-│   ├── repositories/    # Data access layer
-│   ├── schemas/         # Pydantic schemas
-│   ├── services/        # Business logic
-│   └── utils/           # Utilities
-├── alembic/             # Database migrations
-├── tests/               # Test suite
-├── scripts/             # Utility scripts
-├── docs/                # Documentation
-├── data/                # Database files (gitignored)
-├── logs/                # Log files (gitignored)
-├── .github/workflows/   # CI/CD pipeline
+│   ├── cache/            # Caching implementation
+│   ├── core/             # Core utilities
+│   ├── db/               # Database configuration
+│   ├── metrics/          # Metrics collection
+│   ├── middleware/       # Custom middleware
+│   ├── models/           # SQLAlchemy models
+│   ├── repositories/     # Data access layer
+│   ├── schemas/          # Pydantic schemas
+│   ├── services/         # Business logic
+│   └── utils/            # Utilities
+├── alembic/               # Database migrations
+├── tests/                 # Test suite
+├── scripts/                # Utility scripts
+├── docs/                   # Documentation
+│   └── screenshots/        # Swagger UI & SQLite screenshots
+├── data/                   # Database files (gitignored)
+├── logs/                   # Log files (gitignored)
+├── .github/workflows/      # CI/CD pipeline
 ├── README.md
 ├── requirements.txt
 ├── alembic.ini
@@ -178,13 +225,13 @@ Fetch All Catalogue Items
      │
      ↓
 For Each Item:
-  ├─ Goal Match? (+4)
-  ├─ Skill Level Match? (+3)
-  ├─ Beginner-Friendly? (+2)
-  ├─ Budget Fit? (+2)
-  ├─ Near-Budget Fit? (+1)
-  ├─ Location Match? (+2)
-  └─ Pace Match? (+1)
+  ├─ Goal Match?              (+4)
+  ├─ Skill Level Match?       (+3)
+  ├─ Beginner-Friendly?       (+2)
+  ├─ Budget Fit?              (+2)
+  ├─ Near-Budget Fit?         (+1)
+  ├─ Location Match?          (+2)
+  └─ Pace Match?              (+1)
      │
      ↓
 Filter (Score ≥ 8)
@@ -244,6 +291,8 @@ Top 3 Results with Explanations
 Response to Client
 ```
 
+---
+
 ## Setup Instructions
 
 ### Prerequisites
@@ -282,6 +331,8 @@ ACCESS_TOKEN_EXPIRE_MINUTES=30
 ALGORITHM=HS256
 ```
 
+---
+
 ## Database Setup
 
 ### Run Migrations
@@ -299,6 +350,8 @@ alembic upgrade head
 python scripts/seed_database.py
 ```
 
+---
+
 ## Run Instructions
 
 ### Development Server
@@ -311,26 +364,32 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
 ```
 
+---
+
 ## API Documentation
 
 ### Swagger UI
-Open http://localhost:8000/docs in your browser
+Open [http://localhost:8000/docs](http://localhost:8000/docs) in your browser
 
 ### ReDoc
-Open http://localhost:8000/redoc in your browser
+Open [http://localhost:8000/redoc](http://localhost:8000/redoc) in your browser
 
 ### Key Endpoints
-- `POST /api/v1/auth/register` - Register new user
-- `POST /api/v1/auth/login` - Login and get JWT token
-- `POST /api/v1/recommend` - Get personalized recommendations
-- `GET /api/v1/items` - List items (admin only)
-- `POST /api/v1/items` - Create item (admin only)
-- `GET /api/v1/items/{id}` - Get item by ID (admin only)
-- `PUT /api/v1/items/{id}` - Update item (admin only)
-- `DELETE /api/v1/items/{id}` - Delete item (admin only)
-- `GET /api/v1/explain/{item_id}` - Get explanation for item
-- `GET /api/v1/health` - Health check
-- `GET /api/v1/metrics` - Application metrics
+| Method | Endpoint | Description | Access |
+|---|---|---|---|
+| POST | `/api/v1/auth/register` | Register new user | Public |
+| POST | `/api/v1/auth/login` | Login and get JWT token | Public |
+| POST | `/api/v1/recommend` | Get personalized recommendations | Authenticated |
+| GET | `/api/v1/items` | List items | Admin |
+| POST | `/api/v1/items` | Create item | Admin |
+| GET | `/api/v1/items/{id}` | Get item by ID | Admin |
+| PUT | `/api/v1/items/{id}` | Update item | Admin |
+| DELETE | `/api/v1/items/{id}` | Delete item | Admin |
+| GET | `/api/v1/explain/{item_id}` | Get explanation for item | Authenticated |
+| GET | `/api/v1/health` | Health check | Public |
+| GET | `/api/v1/metrics` | Application metrics | Admin |
+
+---
 
 ## Example Requests
 
@@ -400,6 +459,8 @@ curl -X GET http://localhost:8000/api/v1/explain/1 \
   -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
 
+---
+
 ## Testing
 
 ### Run All Tests
@@ -416,6 +477,8 @@ pytest tests/ --cov=app --cov-report=term-missing
 - **116 automated tests passing**
 - Tests cover: Authentication, Recommendation Engine, CRUD Operations, Repository Layer, Service Layer, Caching, Security, Validation
 - Test types: Unit tests, integration tests, security tests, boundary tests
+
+---
 
 ## Assumptions
 - SQLite database for development (PostgreSQL recommended for production)
@@ -440,6 +503,8 @@ pytest tests/ --cov=app --cov-report=term-missing
 - Implement refresh token rotation
 - Add OAuth2 social login support
 
+---
+
 ## AI Use Declaration
 
 **Tool Used:** Cascade (AI Coding Assistant)
@@ -457,6 +522,9 @@ pytest tests/ --cov=app --cov-report=term-missing
 
 **Declaration**
 AI was used as a development assistant to accelerate implementation and problem solving. All generated code was reviewed, integrated, modified where necessary, and tested by me. I understand the architecture, business logic, and implementation of every submitted component.
+
+---
+
 ## Phase Completion
 
 ### Phase 1: Core Requirements ✅
@@ -499,6 +567,8 @@ AI was used as a development assistant to accelerate implementation and problem 
 - Service tests
 - Cache tests
 - Comprehensive documentation
+
+---
 
 ## License
 MIT License
