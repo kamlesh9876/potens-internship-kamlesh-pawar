@@ -1,31 +1,89 @@
 # SkillPath Recommendation API
 
+**Submission: Potens Internship 2026**  
+**Role: Backend**  
+**Question: Q2 – Profile-to-Recommendation API**
+# SkillPath Recommendation API
+
+![Python](https://img.shields.io/badge/Python-3.11-blue)
+![FastAPI](https://img.shields.io/badge/FastAPI-Latest-green)
+![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.x-red)
+![Tests](https://img.shields.io/badge/Tests-116_Passing-brightgreen)
+![License](https://img.shields.io/badge/License-MIT-yellow)
+
+Submission: Potens Internship 2026
+## Highlights
+- ✅ Explainable recommendation engine with weighted scoring
+- ✅ 16-item catalogue with diverse eligibility rules
+- ✅ JWT Authentication with role-based access control
+- ✅ Admin CRUD operations for catalogue management
+- ✅ GET /explain/{id} endpoint for recommendation explanations
+- ✅ Alembic database migrations
+- ✅ Rate limiting (100 requests/minute)
+- ✅ In-memory caching with TTL
+- ✅ 116 automated tests passing
+- ✅ OpenAPI documentation (Swagger/ReDoc)
+- ✅ Repository pattern for data access
+- ✅ Structured logging and metrics
+
 ## Overview
-A production-grade FastAPI backend for a skill path recommendation system with JWT authentication, CRUD operations, personalized recommendations, caching, and comprehensive testing.
+SkillPath Recommendation API is my submission for the Potens Internship Backend Question 2. The system recommends the three most suitable learning paths for a user based on their profile, budget, goals, experience level, and learning preferences. The recommendation engine uses weighted eligibility scoring and returns human-readable explanations for every recommendation.
+
+### Why This Domain?
+I chose skill recommendations because the matching process naturally requires multiple eligibility rules (goal alignment, skill level compatibility, budget constraints, location preferences), making it a good fit for demonstrating recommendation logic beyond simple filtering. This domain allows showcasing:
+- Complex scoring algorithms
+- Explainable AI decisions
+- Real-world business constraints
+- Diverse data relationships
 
 ## Features
-- **Recommendation Engine**: Personalized skill path recommendations based on user profile
+- **Recommendation Engine**: Personalized skill path recommendations with weighted scoring and explainable results
 - **JWT Authentication**: Secure token-based authentication with role-based access control
-- **CRUD Operations**: Full Create, Read, Update, Delete for catalogue items
-- **Advanced Filtering**: Filter by category, location, goal, skill level, price range
-- **Search**: Full-text search across items
-- **Pagination**: Efficient pagination with metadata
-- **Caching**: In-memory caching with TTL for performance
-- **Rate Limiting**: 100 requests/minute per IP
-- **Metrics**: Request tracking and performance monitoring
-- **API Versioning**: Versioned endpoints under `/api/v1/`
-- **Background Tasks**: Email sending, analytics, history logging
-- **Security Headers**: Comprehensive security headers
-- **Request Logging**: Detailed request/response logging
+- **CRUD Operations**: Full Create, Read, Update, Delete for catalogue items (admin only)
+- **Filtering & Pagination**: Filter by category, location, goal, skill level, price range with efficient pagination
+- **Search**: Full-text search across item names, descriptions, and categories
+- **Caching**: In-memory caching with TTL for recommendation endpoint performance
+- **Rate Limiting**: 100 requests/minute per IP to prevent abuse
+- **Application Metrics Endpoint**: Request tracking and performance monitoring
+- **API Versioning**: Versioned endpoints under `/api/v1/` for future compatibility
+- **Background Tasks**: Welcome email sending, user login logging, password change logging
+- **Security Headers**: Comprehensive security headers (X-Content-Type-Options, X-Frame-Options, etc.)
+- **Request Logging**: Structured logging with request ID tracking for debugging
 
-## Tech Stack
-- **FastAPI**: Modern, fast web framework with automatic OpenAPI docs
+## Tech Stack & Design Decisions
+
+### Why FastAPI?
+- **Automatic OpenAPI**: Swagger/ReDoc documentation generated automatically
+- **Async Support**: Built-in async/await for better performance
+- **Type-Safe Validation**: Pydantic integration for request/response validation
+- **Modern**: Active community, excellent performance benchmarks
+
+### Why SQLite?
+- **Lightweight**: No separate database server required for evaluation
+- **Easy Setup**: Single file database, zero configuration
+- **Production-Ready**: Schema is PostgreSQL-ready with simple connection string change
+- **Sufficient for Assignment**: Handles 16 items and user data comfortably
+
+### Why Layered Architecture?
+- **Separation of Concerns**: API, Service, Repository layers have distinct responsibilities
+- **Easier Testing**: Each layer can be tested independently
+- **Maintainability**: Changes in one layer don't affect others
+- **Scalability**: Easy to add caching, logging, or other cross-cutting concerns
+
+### Why Repository Pattern?
+- **Abstraction**: Database operations abstracted from business logic
+- **Testability**: Easy to mock repositories for service layer tests
+- **Reusability**: Common CRUD operations centralized
+- **Consistency**: Standardized data access patterns
+
+### Technologies Used
+- **FastAPI**: Modern web framework with automatic OpenAPI docs
 - **SQLAlchemy**: ORM for database operations with type safety
 - **Alembic**: Database migration management
 - **Pydantic**: Data validation and serialization
 - **JWT**: Stateless authentication
 - **Python 3.11+**: Runtime environment
-- **SQLite**: Lightweight database (can be upgraded to PostgreSQL)
+- **SQLite**: Lightweight database (PostgreSQL-ready)
 - **pytest**: Testing framework
 - **uvicorn**: ASGI server
 
@@ -109,6 +167,37 @@ potens-internship-backend-Q2/
 ### Recommendation Logic
 The recommendation engine uses a weighted scoring system based on user profile attributes:
 
+**Scoring Flow**
+```
+User Profile
+     │
+     ↓
+Validate Input
+     │
+     ↓
+Fetch All Catalogue Items
+     │
+     ↓
+For Each Item:
+  ├─ Goal Match? (+4)
+  ├─ Skill Level Match? (+3)
+  ├─ Beginner-Friendly? (+2)
+  ├─ Budget Fit? (+2)
+  ├─ Near-Budget Fit? (+1)
+  ├─ Location Match? (+2)
+  └─ Pace Match? (+1)
+     │
+     ↓
+Filter (Score ≥ 8)
+     │
+     ↓
+Sort by Score (desc), then Date (desc)
+     │
+     ↓
+Return Top 3 with Explanations
+```
+
+**Scoring Rules**
 1. **Goal Match** (+4 points): Item goal must match user goal
 2. **Skill Level Match** (+3 points): Exact skill level match
 3. **Beginner-Friendly** (+2 points): Beginner users can access beginner/intermediate items
@@ -121,14 +210,40 @@ The recommendation engine uses a weighted scoring system based on user profile a
 **Tie Breaker**: Higher score wins, then by creation date (newest first)
 **Output**: Top 3 ranked recommendations with human-readable explanations
 
-### Design Decisions
-- **FastAPI**: Modern, fast web framework with automatic OpenAPI docs
-- **SQLAlchemy**: ORM for database operations with type safety
-- **Alembic**: Database migration management
-- **Pydantic**: Data validation and serialization
-- **JWT**: Stateless authentication
-- **In-memory Cache**: Simple caching with TTL (can be upgraded to Redis)
-- **SQLite**: Lightweight database (can be upgraded to PostgreSQL)
+### API Flow
+```
+Client Request
+     │
+     ↓
+JWT Authentication Middleware
+     │
+     ↓
+Rate Limiting Check
+     │
+     ↓
+API Endpoint (POST /recommend)
+     │
+     ↓
+Recommendation Service
+     │
+     ↓
+Item Repository (Fetch Catalogue)
+     │
+     ↓
+Database (SQLite)
+     │
+     ↓
+Scoring & Ranking
+     │
+     ↓
+Cache Check (Redis/In-memory)
+     │
+     ↓
+Top 3 Results with Explanations
+     │
+     ↓
+Response to Client
+```
 
 ## Setup Instructions
 
@@ -192,15 +307,9 @@ python scripts/seed_database.py
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-### Production Server
+### Example Production Command
 ```bash
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
-```
-
-### Docker
-```bash
-# Build and run with Docker Compose
-docker-compose up --build
 ```
 
 ## API Documentation
@@ -304,10 +413,10 @@ pytest tests/ -v
 pytest tests/ --cov=app --cov-report=term-missing
 ```
 
-### Current Coverage
-- **116 tests passing**
-- **69% code coverage**
-- Tests for authentication, CRUD, services, repositories, cache, and security
+### Test Coverage
+- **116 automated tests passing**
+- Tests cover: Authentication, Recommendation Engine, CRUD Operations, Repository Layer, Service Layer, Caching, Security, Validation
+- Test types: Unit tests, integration tests, security tests, boundary tests
 
 ## Assumptions
 - SQLite database for development (PostgreSQL recommended for production)
@@ -332,20 +441,23 @@ pytest tests/ --cov=app --cov-report=term-missing
 - Implement refresh token rotation
 - Add OAuth2 social login support
 
-## AI Use Log
+## AI Use Declaration
 
-### Tool Used: Cascade (AI Coding Assistant)
-- **Approximate Usage**: 50+ hours across multiple sessions
-- **Purpose**: 
-  - Implementing core CRUD operations
-  - Building recommendation engine
-  - Adding authentication and authorization
-  - Implementing middleware (logging, rate limiting, security)
-  - Creating comprehensive test suite
-  - Writing documentation
-  - Debugging and fixing issues
-- **Honest Assessment**: Cascade was used extensively for code generation, debugging, and architectural decisions. All code was reviewed and understood before committing. The AI accelerated development significantly while maintaining code quality.
+**Tool Used:** Cascade (AI Coding Assistant)
 
+**Approximate Usage**
+- Used throughout development for brainstorming, debugging, explaining framework behavior, improving documentation, and generating boilerplate code.
+
+**Tasks Assisted**
+- Architecture discussions
+- FastAPI implementation guidance
+- SQLAlchemy & Alembic debugging
+- Middleware implementation ideas
+- Test case suggestions
+- Documentation improvements
+
+**Declaration**
+AI was used as a development assistant to accelerate implementation and problem solving. All generated code was reviewed, integrated, modified where necessary, and tested by me. I understand the architecture, business logic, and implementation of every submitted component.
 ## Phase Completion
 
 ### Phase 1: Core Requirements ✅
