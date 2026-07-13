@@ -92,7 +92,7 @@ def recommend(
     
     # Save recommendation history in background
     profile_dict = profile.model_dump()
-    recommendations_list = [r.model_dump() for r in recommendations]
+    recommendations_list = recommendations
     background_tasks.add_task(save_recommendation_history, current_user.id, profile_dict, recommendations_list)
     
     return RecommendationResponse(recommendations=recommendations)
